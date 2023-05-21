@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <math.h>
-//#include <png.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <errno.h>
+
 
 #include <Imlib2.h>
 
@@ -21,13 +21,12 @@
 #define MAX(A, B)               ((A) > (B) ? (A) : (B))
 #define MIN(A, B)               ((A) < (B) ? (A) : (B))
 #define TEXTW(X)                (drw_fontset_getwidth(drw, (X)))
-#define PI 3.14155926536
 
 #define BUBBL_SIZE 156
 
 
 // Config
-static const char *small_fontlist[] = { "Atari ST 8x16 System Font:pixelsize=30" };
+static const char *fontlist[] = { "Atari ST 8x16 System Font:pixelsize=30" };
 static const char col_black[]       = "#000000";
 static const char col_gray[]       = "#444444";
 static const char col_main[]        = "#ddf00a";
@@ -79,7 +78,7 @@ void get_window_size(Display *dpy, Window win, unsigned *width, unsigned *height
 }
 
 void draw_hexagon_width(unsigned x, unsigned y, unsigned sl, unsigned width) {
-	const double cos30 = cos(PI/6);
+	const double cos30 = cos(M_PI/6);
 	const double sin30 = 0.5f;
 
 	XSetLineAttributes(drw->dpy, drw->gc, width, LineSolid, CapButt, JoinMiter);
@@ -100,7 +99,7 @@ double lerp(double x1, double x2, double part) {
 }
 
 void draw_hexagon_part(unsigned x, unsigned y, unsigned sl, double part) {
-	const double cos30 = cos(PI/6);
+	const double cos30 = cos(M_PI/6);
 	const double sin30 = 0.5f;
 
 	XSetLineAttributes(drw->dpy, drw->gc, 14, LineSolid, CapButt, JoinMiter);
@@ -134,7 +133,7 @@ void draw_hexagon_part(unsigned x, unsigned y, unsigned sl, double part) {
 }
 
 void draw_hexagon_shape(Drawable *dwb, GC *gc, unsigned x, unsigned y, unsigned sl) {
-	const double cos30 = cos(PI/6);
+	const double cos30 = cos(M_PI/6);
 	const double sin30 = 0.5f;
 
 	const double width = cos30 * sl * 2;
@@ -250,7 +249,7 @@ void xinit() {
 	XClearWindow(drw->dpy, drw->root);
 	XMapRaised(drw->dpy, drw->root);
 
-	small = drw_fontset_create(drw, small_fontlist, LENGTH(small_fontlist));
+	small = drw_fontset_create(drw, fontlist, LENGTH(fontlist));
 	drw->scheme = drw_scm_create(drw, colors[0], 3);
 
 	// Set up X SHAPE Extension
