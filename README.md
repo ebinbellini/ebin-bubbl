@@ -13,37 +13,37 @@ Dependencies:
 - Imlib2
 - freetype2
 
-        yay -S libx11 libxft libxext imlib2 freetype2
+    yay -S libx11 libxft libxext imlib2 freetype2
 
 
 Build with
 
-        make
+    make
 
 and install with
 
-        make install
+    make install
 
 
 ## Running
 
 Show 50% volume:
 
-        ebin-bubbl --volume 50
+    ebin-bubbl --volume 50
 
 Show 100% brightness:
 
-        ebin-bubbl --brightness 50
+    ebin-bubbl --brightness 50
 
 Show mic muted:
 
-        ebin-bubbl --mic-mute 1
+    ebin-bubbl --mic-mute 1
 
 Show sound on:
 
-        ebin-bubbl --sound-mute 0
+    ebin-bubbl --sound-mute 0
 
 Show power saving mode on
 
-        ebin-bubbl --power-mode 0
+    ebin-bubbl --power-mode 0
 
