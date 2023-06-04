@@ -17,7 +17,7 @@ Dependencies:
 
 Install dependecies with (arch based):
 
-    yay -S libx11 libxft libxext imlib2 freetype2
+    pacman -S libx11 libxft libxext imlib2 freetype2
 
 
 Build with
