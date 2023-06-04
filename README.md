@@ -15,6 +15,8 @@ Dependencies:
 - Imlib2
 - freetype2
 
+Install dependecies with (arch based):
+
     yay -S libx11 libxft libxext imlib2 freetype2
 
 
