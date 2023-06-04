@@ -14,8 +14,8 @@
 #include <X11/Xft/Xft.h>
 #include <X11/extensions/shape.h>
 
-#include "drw.h"
-#include "util.h"
+#include "drw/drw.h"
+#include "drw/util.h"
 
 #define LENGTH(X)               (sizeof X / sizeof X[0])
 #define MAX(A, B)               ((A) > (B) ? (A) : (B))
