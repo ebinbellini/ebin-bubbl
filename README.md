@@ -2,7 +2,7 @@
 
 This is a system info popup program. It can show volume %, brightness %,
 mic on/off, sound on/off, battery saving mode on/off. It can easily be
-extended to show other things.
+extended to show other things. Below is a demonstration of how it looks.
 
 ![example of ebin-bubbl being used](./example.png)
 
