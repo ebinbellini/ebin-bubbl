@@ -84,6 +84,16 @@ void get_window_size(Display *dpy, Window win, unsigned *width, unsigned *height
             height, &dummy_border, &dummy_depth);
 }
 
+
+int get_window_depth(Display *dpy, Window win) {
+    Window dummy_win;
+    int dummy_x, dummy_y;
+    unsigned int dummy_width, dummy_height, dummy_border, depth;
+    XGetGeometry(dpy, win, &dummy_win, &dummy_x, &dummy_y, &dummy_width,
+            &dummy_height, &dummy_border, &depth);
+    return depth;
+}
+
 void draw_hexagon_width(unsigned x, unsigned y, unsigned sl, unsigned width) {
     const double cos30 = cos(M_PI/6);
     const double sin30 = 0.5f;
@@ -298,12 +308,11 @@ void load_icon(char *command) {
     if (icon == NULL) return;
     
     if (icon_type == IconTypeStatus) {
-        if (res_value == 1) {
+        if (res_value == 0) {
+            file_name = ((StatusIcon*)icon)->disabled_path;
+        } else {
             file_name = ((StatusIcon*)icon)->enabled_path;
             res_value = 100;
-        } else {
-            file_name = ((StatusIcon*)icon)->disabled_path;
-            res_value = 0;
         }
     } else {
         file_name = ((RangeIcon*)icon)->path;
@@ -311,19 +320,51 @@ void load_icon(char *command) {
 
     snprintf(file_path, LENGTH(file_path), "%s%s.png", icon_directory, file_name);
 
-    // From https://stackoverflow.com/questions/14995104/how-to-load-bmp-file-using-x11-window-background
     Imlib_Image img = imlib_load_image(file_path);
     if (img == NULL) {
-        fprintf(stderr, "%s:Unable to load image\n", file_path);
+        fprintf(stderr, "Couldn't load icon at %s\n", file_path);
         icon = NULL;
     } else {
-        imlib_context_set_image(img);
-        imlib_context_set_display(drw->dpy);
-        imlib_context_set_drawable(drw->drawable);
-
         Screen *scn = DefaultScreenOfDisplay(drw->dpy);
+        imlib_context_set_display(drw->dpy);
         imlib_context_set_visual(DefaultVisualOfScreen(scn));
         imlib_context_set_colormap(DefaultColormapOfScreen(scn));
+        imlib_context_set_image(img);
+        imlib_context_set_drawable(drw->drawable);
+        int width = imlib_image_get_width();
+        int height = imlib_image_get_height();
+        int depth = get_window_depth(drw->dpy, drw->root);
+
+        // Change color of icon to match palette. First step: create mask
+        Pixmap colored_icon = XCreatePixmap(drw->dpy, drw->drawable,
+            width, height, depth);
+        Pixmap pix, mask;
+        imlib_render_pixmaps_for_whole_image(&pix, &mask);
+
+        Clr *color;
+        if (XftColorAllocName(drw->dpy, DefaultVisual(drw->dpy, drw->screen),
+	                       DefaultColormap(drw->dpy, drw->screen),
+	                       col_foreground, color)) {
+            // Draw the new color through the mask
+            XSetClipMask(drw->dpy, drw->gc, mask);
+            XSetForeground(drw->dpy, drw->gc, color->pixel);
+            XFillRectangle(drw->dpy, colored_icon, drw->gc, 0, 0, width, height);
+            XSetClipMask(drw->dpy, drw->gc, None);
+
+            // Set new colored image as imlib image
+            imlib_context_set_drawable(colored_icon);
+            Imlib_Image colored_image = imlib_create_image_from_drawable(mask, 0, 0, width, height, 0);
+            imlib_context_set_image(colored_image);
+            // Can't free colored_image since it will be used when drawing
+
+            // Cleanup
+            XftColorFree(drw->dpy, DefaultVisual(drw->dpy, drw->screen),
+                DefaultColormap(drw->dpy, drw->screen), color);
+        }
+
+        XFreePixmap(drw->dpy, colored_icon);
+        imlib_context_set_drawable(drw->drawable);
+        imlib_free_pixmap_and_mask(pix);
     }
 }
 
