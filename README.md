@@ -37,17 +37,25 @@ Show 50% volume:
 
 Show 100% brightness:
 
-    ebin-bubbl --brightness 50
+    ebin-bubbl --brightness 100
 
 Show mic muted:
 
-    ebin-bubbl --mic-mute 1
+    ebin-bubbl --mic 1
 
 Show sound on:
 
-    ebin-bubbl --sound-mute 0
+    ebin-bubbl --sound 0
 
 Show power saving mode on
 
     ebin-bubbl --power-mode 0
 
+## Configuring
+
+You can configure the color scheme by editing the COLOR section of the config.h
+file. You can also add new icons in the ICONS section.
+
+You *must* change the path to the icon directory by editing the config.h file.
+I might try to fix this in the future by embedding the icons in the executable
+somehow.
