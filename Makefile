@@ -1,10 +1,16 @@
-ebin-bubbl: *.c 
-	tcc -O0 *.c drw/*.c -lX11 -lXft -lXext \
+ebin-bubbl: *.c
+	sh ./generate_icon_data.sh
+	tcc -o ebin-bubbl \
+	*.c drw/*.c -O0 -lX11 -lXft -lXext \
+	-lfontconfig -lfreetype \
 	-lm -I/usr/include/freetype2 -lImlib2 \
-	-o ebin-bubbl
 
 
 all: ebin-bubbl
+
+
+clean:
+	rm -f icon_data.h
 
 
 install: all

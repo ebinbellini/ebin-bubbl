@@ -31,19 +31,19 @@ and install with
 
 ## Running
 
-Show 50% volume:
+Show 35% volume:
 
-    ebin-bubbl --volume 50
+    ebin-bubbl --volume 35
 
-Show 100% brightness:
+Show 64% brightness:
 
-    ebin-bubbl --brightness 100
+    ebin-bubbl --brightness 64
 
 Show mic muted:
 
     ebin-bubbl --mic 1
 
-Show sound on:
+Show sound not muted:
 
     ebin-bubbl --sound 0
 
@@ -55,7 +55,3 @@ Show power saving mode on
 
 You can configure the color scheme by editing the COLOR section of the config.h
 file. You can also add new icons in the ICONS section.
-
-You *must* change the path to the icon directory by editing the config.h file.
-I might try to fix this in the future by embedding the icons in the executable
-somehow.

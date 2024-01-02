@@ -1,3 +1,4 @@
+#include "icon_data.h"
 
 // Width of the bubble
 #define BUBBL_SIZE 156
@@ -23,34 +24,37 @@ ColorPreference c_prefs[] = {
 
 // =============== ICONS =============== 
 
-// TODO embed icons in program instead of having a directory option
-static const char *icon_directory = "/home/ebin/ports/ebin/bubbl/icons/";
-
 /* Icon type */
 enum { IconTypeStatus, IconTypeRange };
 
 typedef struct {
     char* command;
-    char* disabled_path;
+
+    unsigned int disabled_offset;
+    unsigned int disabled_size;
     char* disabled_text;
-    char* enabled_path;
+
+    unsigned int enabled_offset;
+    unsigned int enabled_size;
     char* enabled_text;
 } StatusIcon;
 
+#define ICON(X) icon_offset_##X, icon_size_##X
 StatusIcon status_icons[] = {
     /*Command       Disabled icon    & text   Enabled icon & text */
-    { "sound",      "speaker-muted", "MUTED", "speaker",   "ACTIVE" },
-    { "mic",        "mic-muted",     "MUTED", "mic",       "ACTIVE" },
-    { "power-mode", "battery",       "SAVE!", "battery",   "FAST!"  },
+    { "sound",      ICON(speaker_muted), "MUTED", ICON(speaker),   "ACTIVE" },
+    { "mic",        ICON(mic_muted),     "MUTED", ICON(mic),       "ACTIVE" },
+    { "power-mode", ICON(battery),       "SAVE!", ICON(battery),   "FAST!"  },
 };
 
 typedef struct {
     char* command;
-    char* path;
+    unsigned int icon_offset;
+    unsigned int icon_size;
 } RangeIcon;
 
 RangeIcon range_icons[] = {
-    /*Command       Icon path */
-    { "brightness", "soleil" },
-    { "volume",     "speaker" },
+    /*Command       Icon */
+    { "brightness", ICON(soleil) },
+    { "volume",     ICON(speaker) },
 };

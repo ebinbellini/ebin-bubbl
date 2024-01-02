@@ -62,7 +62,7 @@ int resource_load(XrmDatabase db, char *name, void **dst) {
 	return 0;
 }
 
-int load_colors_from_xresources() {
+void load_colors_from_xresources() {
 	XrmInitialize();
     char *resource_manager = XResourceManagerString(drw->dpy);
 	if (!resource_manager)
@@ -71,7 +71,7 @@ int load_colors_from_xresources() {
 
 	ColorPreference *c;
 	for (c = c_prefs; c < c_prefs + LENGTH(c_prefs); c++) {
-		resource_load(db, c->name, c->dst);
+		resource_load(db, c->name, (void **)c->dst);
     }
 }
 
@@ -180,10 +180,6 @@ void draw() {
     static unsigned f = 0;
     f++;
 
-    /*// Read window size
-    unsigned width, height;
-    get_window_size(drw->dpy, drw->root, &width, &height);*/
-
     draw_hexagon_part(BUBBL_SIZE / 2, BUBBL_SIZE/2, BUBBL_SIZE/2, (double)res_value/100);
     draw_hexagon_width(BUBBL_SIZE / 2, BUBBL_SIZE/2, BUBBL_SIZE/2, 1);
     draw_hexagon_width(BUBBL_SIZE / 2, BUBBL_SIZE/2, BUBBL_SIZE/2 - 8, 1);
@@ -264,7 +260,7 @@ void xinit() {
 
     load_colors_from_xresources();
     char * palette[] = { col_background, col_foreground };
-    drw->scheme = drw_scm_create(drw, palette, 2);
+    drw->scheme = drw_scm_create(drw, (const char **)palette, 2);
 
     // Set up X SHAPE Extension
     Pixmap shape_mask = XCreatePixmap(drw->dpy, drw->root,
@@ -282,9 +278,6 @@ void xinit() {
 }
 
 void load_icon(char *command) {
-    char *file_name = NULL;
-    char file_path[256];
-
     for (RangeIcon *ri = range_icons; ri < range_icons + LENGTH(range_icons); ri++) {
         // Skip the first two letters "--" of command 
         if (strcmp(ri->command, command+2) == 0) {
@@ -307,22 +300,26 @@ void load_icon(char *command) {
     
     if (icon == NULL) return;
     
+    int file_offset = 0;
+    int file_size = 0;
     if (icon_type == IconTypeStatus) {
         if (res_value == 0) {
-            file_name = ((StatusIcon*)icon)->disabled_path;
+            file_offset = ((StatusIcon*)icon)->disabled_offset;
+            file_size = ((StatusIcon*)icon)->disabled_size;
         } else {
-            file_name = ((StatusIcon*)icon)->enabled_path;
+            file_offset = ((StatusIcon*)icon)->enabled_offset;
+            file_size = ((StatusIcon*)icon)->enabled_size;
             res_value = 100;
         }
     } else {
-        file_name = ((RangeIcon*)icon)->path;
+        file_offset = ((RangeIcon*)icon)->icon_offset;
+        file_size = ((RangeIcon*)icon)->icon_size;
     }
 
-    snprintf(file_path, LENGTH(file_path), "%s%s.png", icon_directory, file_name);
+    Imlib_Image img = imlib_load_image_mem("icon.png", icon_data+file_offset, file_size);
 
-    Imlib_Image img = imlib_load_image(file_path);
     if (img == NULL) {
-        fprintf(stderr, "Couldn't load icon at %s\n", file_path);
+        fprintf(stderr, "Couldn't load icon");
         icon = NULL;
     } else {
         Screen *scn = DefaultScreenOfDisplay(drw->dpy);
@@ -341,27 +338,19 @@ void load_icon(char *command) {
         Pixmap pix, mask;
         imlib_render_pixmaps_for_whole_image(&pix, &mask);
 
-        Clr *color;
-        if (XftColorAllocName(drw->dpy, DefaultVisual(drw->dpy, drw->screen),
-	                       DefaultColormap(drw->dpy, drw->screen),
-	                       col_foreground, color)) {
-            // Draw the new color through the mask
-            XSetClipMask(drw->dpy, drw->gc, mask);
-            XSetForeground(drw->dpy, drw->gc, color->pixel);
-            XFillRectangle(drw->dpy, colored_icon, drw->gc, 0, 0, width, height);
-            XSetClipMask(drw->dpy, drw->gc, None);
+        // Draw the new color through the mask
+        XSetClipMask(drw->dpy, drw->gc, mask);
+        XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
+        XFillRectangle(drw->dpy, colored_icon, drw->gc, 0, 0, width, height);
+        XSetClipMask(drw->dpy, drw->gc, None);
 
-            // Set new colored image as imlib image
-            imlib_context_set_drawable(colored_icon);
-            Imlib_Image colored_image = imlib_create_image_from_drawable(mask, 0, 0, width, height, 0);
-            imlib_context_set_image(colored_image);
-            // Can't free colored_image since it will be used when drawing
+        // Set new colored image as imlib image
+        imlib_context_set_drawable(colored_icon);
+        Imlib_Image colored_image = imlib_create_image_from_drawable(mask, 0, 0, width, height, 0);
+        imlib_context_set_image(colored_image);
 
-            // Cleanup
-            XftColorFree(drw->dpy, DefaultVisual(drw->dpy, drw->screen),
-                DefaultColormap(drw->dpy, drw->screen), color);
-        }
-
+        // Can't free colored_image since it will be used when drawing
+        // Cleanup
         XFreePixmap(drw->dpy, colored_icon);
         imlib_context_set_drawable(drw->drawable);
         imlib_free_pixmap_and_mask(pix);
@@ -399,6 +388,10 @@ void usage(void) {
 
 void main(int argc, char *argv[]) {
     char* command;
+    if (argc == 1) {
+        usage();
+    }
+
     if (strncmp("--", argv[1], 2) == 0) {
         command = argv[1];
     } else {
