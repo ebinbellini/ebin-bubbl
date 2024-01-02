@@ -53,5 +53,6 @@ Show power saving mode on
 
 ## Configuring
 
-You can configure the color scheme by editing the COLOR section of the config.h
-file. You can also add new icons in the ICONS section.
+The color palette is fetched from your Xresources file. You can configure which
+Xresources colors are used and the fallback color scheme by editing the COLOR
+section of the config.h file. You can also add new icons in the ICONS section.
