@@ -1,4 +1,6 @@
-ebin-bubbl: *.c
+SRC = bubbl.c config.h drw/drw.c drw/util.c
+
+ebin-bubbl: ${SRC}
 	sh ./generate_icon_data.sh
 	tcc -o ebin-bubbl \
 	*.c drw/*.c -O0 -lX11 -lXft -lXext \

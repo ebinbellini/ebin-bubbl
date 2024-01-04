@@ -3,7 +3,11 @@
 // Width of the bubble
 #define BUBBL_SIZE 156
 
+// Font config
 static const char *fontlist[] = { "Atari ST 8x16 System Font:pixelsize=30" };
+
+// File used to send commands between instances of ebin bubbl
+static const char fifo_path[] = "/tmp/ebin_bubbl_pipe";
 
 // =============== COLORS =============== 
 

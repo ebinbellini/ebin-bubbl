@@ -1,9 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <math.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <errno.h>
 
 #include <Imlib2.h>
@@ -29,6 +31,7 @@ static int icon_type = IconTypeStatus;
 static void* icon = NULL;
 // The number for the value
 static int res_value;
+unsigned frame_number = 0;
 
 void close_x() {
     if (icon != NULL)
@@ -38,9 +41,13 @@ void close_x() {
     Window win = drw->root;
     drw_free(drw);
     XDestroyWindow(dpy, win);
+    // This XCloseDisplay sometimes hangs...
     XCloseDisplay(dpy);
+}
 
-    exit(0);
+void cleanup() {
+    close_x();
+    remove(fifo_path);
 }
 
 int resource_load(XrmDatabase db, char *name, void **dst) {
@@ -75,7 +82,6 @@ void load_colors_from_xresources() {
     }
 }
 
-
 void get_window_size(Display *dpy, Window win, unsigned *width, unsigned *height) {
     Window dummy_win;
     int dummy_x, dummy_y;
@@ -84,7 +90,6 @@ void get_window_size(Display *dpy, Window win, unsigned *width, unsigned *height
             height, &dummy_border, &dummy_depth);
 }
 
-
 int get_window_depth(Display *dpy, Window win) {
     Window dummy_win;
     int dummy_x, dummy_y;
@@ -92,6 +97,90 @@ int get_window_depth(Display *dpy, Window win) {
     XGetGeometry(dpy, win, &dummy_win, &dummy_x, &dummy_y, &dummy_width,
             &dummy_height, &dummy_border, &depth);
     return depth;
+}
+
+void load_icon(char *command) {
+    icon = NULL;
+    for (RangeIcon *ri = range_icons; ri < range_icons + LENGTH(range_icons); ri++) {
+        // Skip the first two letters "--" of command 
+        if (strcmp(ri->command, command+2) == 0) {
+            icon = ri;
+            icon_type = IconTypeRange;
+            break;
+        }
+    }
+
+    if (icon == NULL) {
+        for (StatusIcon *si = status_icons; si < status_icons + LENGTH(status_icons); si++) {
+            // Skip the first two letters "--" of command 
+            if (strcmp(si->command, command+2) == 0) {
+                icon = si;
+                icon_type = IconTypeStatus;
+                break;
+            }
+        }
+    }
+    
+    if (icon == NULL) return;
+    
+    int file_offset = 0;
+    int file_size = 0;
+    if (icon_type == IconTypeStatus) {
+        if (res_value == 0) {
+            file_offset = ((StatusIcon*)icon)->disabled_offset;
+            file_size = ((StatusIcon*)icon)->disabled_size;
+        } else {
+            file_offset = ((StatusIcon*)icon)->enabled_offset;
+            file_size = ((StatusIcon*)icon)->enabled_size;
+            res_value = 100;
+        }
+    } else {
+        file_offset = ((RangeIcon*)icon)->icon_offset;
+        file_size = ((RangeIcon*)icon)->icon_size;
+    }
+
+    char file_name[256];
+    snprintf(file_name, sizeof(file_name)-1, "%s.png", command+2);
+
+    Imlib_Image img = imlib_load_image_mem(file_name, icon_data+file_offset, file_size);
+
+    if (img == NULL) {
+        fprintf(stderr, "Couldn't load icon");
+        icon = NULL;
+    } else {
+        Screen *scn = DefaultScreenOfDisplay(drw->dpy);
+        imlib_context_set_display(drw->dpy);
+        imlib_context_set_visual(DefaultVisualOfScreen(scn));
+        imlib_context_set_colormap(DefaultColormapOfScreen(scn));
+        imlib_context_set_image(img);
+        imlib_context_set_drawable(drw->drawable);
+        int width = imlib_image_get_width();
+        int height = imlib_image_get_height();
+        int depth = get_window_depth(drw->dpy, drw->root);
+
+        // Change color of icon to match palette. First step: create mask
+        Pixmap colored_icon = XCreatePixmap(drw->dpy, drw->drawable,
+            width, height, depth);
+        Pixmap pix, mask;
+        imlib_render_pixmaps_for_whole_image(&pix, &mask);
+
+        // Draw the new color through the mask
+        XSetClipMask(drw->dpy, drw->gc, mask);
+        XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
+        XFillRectangle(drw->dpy, colored_icon, drw->gc, 0, 0, width, height);
+        XSetClipMask(drw->dpy, drw->gc, None);
+
+        // Set new colored image as imlib image
+        imlib_context_set_drawable(colored_icon);
+        Imlib_Image colored_image = imlib_create_image_from_drawable(mask, 0, 0, width, height, 0);
+        imlib_context_set_image(colored_image);
+
+        // Can't free colored_image since it will be used when drawing
+        // Cleanup
+        XFreePixmap(drw->dpy, colored_icon);
+        imlib_context_set_drawable(drw->drawable);
+        imlib_free_pixmap_and_mask(pix);
+    }
 }
 
 void draw_hexagon_width(unsigned x, unsigned y, unsigned sl, unsigned width) {
@@ -177,8 +266,7 @@ void draw_hexagon_shape(Drawable *dwb, GC *gc, unsigned x, unsigned y, unsigned 
 
 void draw() {
     // Count how many frames have been drawn
-    static unsigned f = 0;
-    f++;
+    frame_number++;
 
     draw_hexagon_part(BUBBL_SIZE / 2, BUBBL_SIZE/2, BUBBL_SIZE/2, (double)res_value/100);
     draw_hexagon_width(BUBBL_SIZE / 2, BUBBL_SIZE/2, BUBBL_SIZE/2, 1);
@@ -212,8 +300,60 @@ void draw() {
 
     // Clear pixmap
     drw_rect(drw, 0, 0, BUBBL_SIZE, BUBBL_SIZE, 1, 0);
-    
-    if (f == 100) close_x();
+
+    int n;
+    int fd;
+    char buf[256];
+    do {
+        // While we receive EAGAIN, keep reading
+        fd = open(fifo_path, O_RDONLY | O_NONBLOCK);
+        n = read(fd, buf, sizeof(buf));
+    } while (n == -1 && errno == EAGAIN);
+
+    if (n > 0) {
+        // Ok we got a message, but there might be more. Skip to the last
+        // one.
+        int m = n;
+        while (n > 0) {
+            n = read(fd, buf, sizeof(buf));
+            if (n > 0) {
+                m = n;
+            }
+        }
+
+        // Split e.g. "--volume 80" into command="--volume" and val="80"
+        char *val;
+        char *command = val = buf;
+        while (*val != ' ' && val - command < m) {
+            val++;
+        }
+        *val = '\0';
+        val++;
+
+        if (strlen(command) > 2) {
+            // Valid command, update data
+            frame_number = 0;
+            res_value = atoi(val);
+            if (icon != NULL) {
+                if (icon_type == IconTypeRange) {
+                    if (strcmp(command+2, ((RangeIcon *)icon)->command) != 0) {
+                        // The command is different, load the new icon
+                        load_icon(command);
+                    }
+                } else {
+                    // It's a status icon, so it has probably changed
+                    load_icon(command);
+                }
+            }
+        }
+    }
+
+    close(fd);
+
+    if (frame_number == 100) {
+        cleanup();
+        exit(0);
+    }
 }
 
 void xinit() {
@@ -277,92 +417,6 @@ void xinit() {
     XFreeGC(drw->dpy, shape_gc);
 }
 
-void load_icon(char *command) {
-    for (RangeIcon *ri = range_icons; ri < range_icons + LENGTH(range_icons); ri++) {
-        // Skip the first two letters "--" of command 
-        if (strcmp(ri->command, command+2) == 0) {
-            icon = ri;
-            icon_type = IconTypeRange;
-            break;
-        }
-    }
-
-    if (icon == NULL) {
-        for (StatusIcon *si = status_icons; si < status_icons + LENGTH(status_icons); si++) {
-            // Skip the first two letters "--" of command 
-            if (strcmp(si->command, command+2) == 0) {
-                icon = si;
-                icon_type = IconTypeStatus;
-                break;
-            }
-        }
-    }
-    
-    if (icon == NULL) return;
-    
-    int file_offset = 0;
-    int file_size = 0;
-    if (icon_type == IconTypeStatus) {
-        if (res_value == 0) {
-            file_offset = ((StatusIcon*)icon)->disabled_offset;
-            file_size = ((StatusIcon*)icon)->disabled_size;
-        } else {
-            file_offset = ((StatusIcon*)icon)->enabled_offset;
-            file_size = ((StatusIcon*)icon)->enabled_size;
-            res_value = 100;
-        }
-    } else {
-        file_offset = ((RangeIcon*)icon)->icon_offset;
-        file_size = ((RangeIcon*)icon)->icon_size;
-    }
-
-    Imlib_Image img = imlib_load_image_mem("icon.png", icon_data+file_offset, file_size);
-
-    if (img == NULL) {
-        fprintf(stderr, "Couldn't load icon");
-        icon = NULL;
-    } else {
-        Screen *scn = DefaultScreenOfDisplay(drw->dpy);
-        imlib_context_set_display(drw->dpy);
-        imlib_context_set_visual(DefaultVisualOfScreen(scn));
-        imlib_context_set_colormap(DefaultColormapOfScreen(scn));
-        imlib_context_set_image(img);
-        imlib_context_set_drawable(drw->drawable);
-        int width = imlib_image_get_width();
-        int height = imlib_image_get_height();
-        int depth = get_window_depth(drw->dpy, drw->root);
-
-        // Change color of icon to match palette. First step: create mask
-        Pixmap colored_icon = XCreatePixmap(drw->dpy, drw->drawable,
-            width, height, depth);
-        Pixmap pix, mask;
-        imlib_render_pixmaps_for_whole_image(&pix, &mask);
-
-        // Draw the new color through the mask
-        XSetClipMask(drw->dpy, drw->gc, mask);
-        XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
-        XFillRectangle(drw->dpy, colored_icon, drw->gc, 0, 0, width, height);
-        XSetClipMask(drw->dpy, drw->gc, None);
-
-        // Set new colored image as imlib image
-        imlib_context_set_drawable(colored_icon);
-        Imlib_Image colored_image = imlib_create_image_from_drawable(mask, 0, 0, width, height, 0);
-        imlib_context_set_image(colored_image);
-
-        // Can't free colored_image since it will be used when drawing
-        // Cleanup
-        XFreePixmap(drw->dpy, colored_icon);
-        imlib_context_set_drawable(drw->drawable);
-        imlib_free_pixmap_and_mask(pix);
-    }
-}
-
-
-void sig_handler(int signo) {
-    printf("tog emot signalen %d\n", signo); 
-    die("shit asså");
-}
-
 void loop() {
     XEvent event;
     KeySym key;
@@ -382,32 +436,44 @@ void loop() {
     }
 }
 
+void interrupt_handler(int _) {
+    cleanup();
+    exit(0);
+}
+
+void check_existing_instance(char *command) {
+    int ret = mkfifo(fifo_path, 0666);
+    if (ret == -1 && errno == EEXIST) {
+        // Another process already exists
+        int fd = open(fifo_path, O_WRONLY);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "%s %d", command, res_value);
+        ssize_t n = write(fd, buf, strlen(buf)+1);
+        close(fd);
+        puts("Sent instructions to existing instance of ebin-bubbl");
+        printf("If no such instance is running, please delete the fifo file at"
+            " %s\n", fifo_path);
+        exit(0);
+    }
+}
+
 void usage(void) {
 	die("Wrong command format. Check out the README.md for usage examples.");
 }
 
 void main(int argc, char *argv[]) {
-    char* command;
-    if (argc == 1) {
-        usage();
-    }
-
-    if (strncmp("--", argv[1], 2) == 0) {
-        command = argv[1];
-    } else {
-        usage();
-    }
-
-    if (argc > 2) {
+    if (argc > 2 && strncmp("--", argv[1], 2) == 0) {
         res_value = atoi(argv[2]);
     } else {
         usage();
     }
 
-    xinit();
-    load_icon(command);
+    check_existing_instance(argv[1]);
 
+    xinit();
+    load_icon(argv[1]);
+    signal(SIGINT, interrupt_handler);
+    signal(SIGKILL, interrupt_handler);
     loop();
-    close_x();
 }
 
