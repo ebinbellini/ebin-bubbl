@@ -28,7 +28,7 @@ ColorPreference c_prefs[] = {
 
 // =============== ICONS =============== 
 
-/* Icon type */
+// Icon type
 enum { IconTypeStatus, IconTypeRange };
 
 typedef struct {
@@ -45,7 +45,7 @@ typedef struct {
 
 #define ICON(X) icon_offset_##X, icon_size_##X
 StatusIcon status_icons[] = {
-    /*Command       Disabled icon    & text   Enabled icon & text */
+    //Command       Disabled icon    & text   Enabled icon & text
     { "sound",      ICON(speaker_muted), "MUTED", ICON(speaker),   "ACTIVE" },
     { "mic",        ICON(mic_muted),     "MUTED", ICON(mic),       "ACTIVE" },
     { "power-mode", ICON(battery),       "SAVE!", ICON(battery),   "FAST!"  },
@@ -58,7 +58,7 @@ typedef struct {
 } RangeIcon;
 
 RangeIcon range_icons[] = {
-    /*Command       Icon */
+    //Command       Icon
     { "brightness", ICON(soleil) },
     { "volume",     ICON(speaker) },
 };

@@ -125,22 +125,23 @@ void load_icon(char *command) {
     
     int file_offset = 0;
     int file_size = 0;
+    char file_name[256];
     if (icon_type == IconTypeStatus) {
         if (res_value == 0) {
             file_offset = ((StatusIcon*)icon)->disabled_offset;
             file_size = ((StatusIcon*)icon)->disabled_size;
+            snprintf(file_name, sizeof(file_name)-1, "%s-disabled.png", command+2);
         } else {
             file_offset = ((StatusIcon*)icon)->enabled_offset;
             file_size = ((StatusIcon*)icon)->enabled_size;
             res_value = 100;
+            snprintf(file_name, sizeof(file_name)-1, "%s-enabled.png", command+2);
         }
     } else {
         file_offset = ((RangeIcon*)icon)->icon_offset;
         file_size = ((RangeIcon*)icon)->icon_size;
+        snprintf(file_name, sizeof(file_name)-1, "%s.png", command+2);
     }
-
-    char file_name[256];
-    snprintf(file_name, sizeof(file_name)-1, "%s.png", command+2);
 
     Imlib_Image img = imlib_load_image_mem(file_name, icon_data+file_offset, file_size);
 
@@ -264,43 +265,7 @@ void draw_hexagon_shape(Drawable *dwb, GC *gc, unsigned x, unsigned y, unsigned 
     }
 }
 
-void draw() {
-    // Count how many frames have been drawn
-    frame_number++;
-
-    draw_hexagon_part(BUBBL_SIZE / 2, BUBBL_SIZE/2, BUBBL_SIZE/2, (double)res_value/100);
-    draw_hexagon_width(BUBBL_SIZE / 2, BUBBL_SIZE/2, BUBBL_SIZE/2, 1);
-    draw_hexagon_width(BUBBL_SIZE / 2, BUBBL_SIZE/2, BUBBL_SIZE/2 - 8, 1);
-
-    // Set text
-    drw->fonts = font;
-    char text[7] = "";
-    if (icon != NULL && icon_type == IconTypeStatus) {
-        // It's a status icon, show status text
-        if (res_value == 0) {
-            strcpy(text, ((StatusIcon*)icon)->disabled_text);
-        } else {
-            strcpy(text, ((StatusIcon*)icon)->enabled_text);
-        }
-    } else {
-        // It's a range icon, show number value
-        snprintf(text, 5, "%d%%", res_value);
-    }
-
-    if (icon == NULL)  {
-        drw_text(drw, BUBBL_SIZE / 2 - TEXTW(text) / 2, BUBBL_SIZE/2 + 10, TEXTW(text), 10, 0, text, 1);
-    } else {
-        int width = imlib_image_get_width();
-        drw_text(drw, BUBBL_SIZE / 2 - TEXTW(text) / 2, BUBBL_SIZE/2 + 3, TEXTW(text), 30, 0, text, 1);
-        imlib_render_image_on_drawable(BUBBL_SIZE/2 - width / 2, 23);
-    }
-
-    // Put frame on screen
-    drw_map(drw, drw->root, 0, 0, BUBBL_SIZE, BUBBL_SIZE);
-
-    // Clear pixmap
-    drw_rect(drw, 0, 0, BUBBL_SIZE, BUBBL_SIZE, 1, 0);
-
+void check_new_command() {
     int n;
     int fd;
     char buf[256];
@@ -349,6 +314,46 @@ void draw() {
     }
 
     close(fd);
+}
+
+void draw() {
+    // Count how many frames have been drawn
+    frame_number++;
+
+    draw_hexagon_part(BUBBL_SIZE / 2, BUBBL_SIZE/2, BUBBL_SIZE/2, (double)res_value/100);
+    draw_hexagon_width(BUBBL_SIZE / 2, BUBBL_SIZE/2, BUBBL_SIZE/2, 1);
+    draw_hexagon_width(BUBBL_SIZE / 2, BUBBL_SIZE/2, BUBBL_SIZE/2 - 8, 1);
+
+    // Set text
+    drw->fonts = font;
+    char text[7] = "";
+    if (icon != NULL && icon_type == IconTypeStatus) {
+        // It's a status icon, show status text
+        if (res_value == 0) {
+            strcpy(text, ((StatusIcon*)icon)->disabled_text);
+        } else {
+            strcpy(text, ((StatusIcon*)icon)->enabled_text);
+        }
+    } else {
+        // It's a range icon, show number value
+        snprintf(text, 5, "%d%%", res_value);
+    }
+
+    if (icon == NULL)  {
+        drw_text(drw, BUBBL_SIZE / 2 - TEXTW(text) / 2, BUBBL_SIZE/2 + 10, TEXTW(text), 10, 0, text, 1);
+    } else {
+        int width = imlib_image_get_width();
+        drw_text(drw, BUBBL_SIZE / 2 - TEXTW(text) / 2, BUBBL_SIZE/2 + 3, TEXTW(text), 30, 0, text, 1);
+        imlib_render_image_on_drawable(BUBBL_SIZE/2 - width / 2, 23);
+    }
+
+    // Put frame on screen
+    drw_map(drw, drw->root, 0, 0, BUBBL_SIZE, BUBBL_SIZE);
+
+    // Clear pixmap
+    drw_rect(drw, 0, 0, BUBBL_SIZE, BUBBL_SIZE, 1, 0);
+
+    check_new_command();
 
     if (frame_number == 100) {
         cleanup();
