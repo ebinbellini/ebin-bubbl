@@ -16,7 +16,9 @@ typedef struct {
     char** dst;
 } ColorPreference;
 
-// Fallback colors for when colors from Xresources are not found
+static const int use_xresources = 1;
+
+// Fallback colors for when Xresources colors are not used/found
 static char* col_background = "#000000";
 static char* col_foreground = "#ddf00a";
 

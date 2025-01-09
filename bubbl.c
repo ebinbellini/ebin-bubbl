@@ -69,7 +69,7 @@ int resource_load(XrmDatabase db, char *name, void **dst) {
 	return 0;
 }
 
-void load_colors_from_xresources() {
+void load_xresources() {
 	XrmInitialize();
     char *resource_manager = XResourceManagerString(drw->dpy);
 	if (!resource_manager)
@@ -403,7 +403,8 @@ void xinit() {
 
     font = drw_fontset_create(drw, fontlist, LENGTH(fontlist));
 
-    load_colors_from_xresources();
+    if (use_xresources)
+        load_xresources();
     char * palette[] = { col_background, col_foreground };
     drw->scheme = drw_scm_create(drw, (const char **)palette, 2);
 
