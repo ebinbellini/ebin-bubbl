@@ -475,7 +475,7 @@ void usage(void) {
 	die("Wrong command format. Check out the README.md for usage examples.");
 }
 
-void main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
     if (argc > 2 && strncmp("--", argv[1], 2) == 0) {
         res_value = atoi(argv[2]);
     } else {
@@ -489,5 +489,6 @@ void main(int argc, char *argv[]) {
     signal(SIGINT, interrupt_handler);
     signal(SIGKILL, interrupt_handler);
     loop();
+    return 0;
 }
 
