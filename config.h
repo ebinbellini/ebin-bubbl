@@ -3,6 +3,16 @@
 // Width of the bubble
 #define BUBBL_SIZE 156
 
+// Bubble initial horizontal direction, may be "right" or "left"
+static const char initial_x_direction[] = "right";
+// Bubble initial vertical direction, may be "top" or "bottom"
+static const char initial_y_direction[] = "top";
+
+// Bubble horizontal offset
+static const int x_offset = 12;
+// Bubble vertical offset
+static const int y_offset = 50;
+
 // Font config
 static const char *fontlist[] = { "Atari ST 8x16 System Font:pixelsize=30" };
 

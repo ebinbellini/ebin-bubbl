@@ -380,8 +380,15 @@ void xinit() {
     width = DisplayWidth(dpy, screen);
     height = DisplayHeight(dpy, screen);
 
-    const int x = width - BUBBL_SIZE - 12;
-    const int y = 116;
+    int x, y;
+    if (!strcmp(initial_x_direction, "left"))
+        x = x_offset;
+    else
+        x = width - BUBBL_SIZE - x_offset;
+    if (!strcmp(initial_y_direction, "bottom"))
+        y = height - BUBBL_SIZE - y_offset;
+    else
+        y = y_offset;
 
     XSetWindowAttributes swa;
     swa.override_redirect = True;
