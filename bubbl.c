@@ -446,7 +446,7 @@ void loop() {
         }
 
         draw();
-        usleep(10000);
+        usleep(timeout * 10000);
     }
 }
 

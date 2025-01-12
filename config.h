@@ -13,6 +13,9 @@ static const int x_offset = 12;
 // Bubble vertical offset
 static const int y_offset = 50;
 
+// The time in seconds it takes before the bubble is removed
+static const int timeout = 1;
+
 // Font config
 static const char *fontlist[] = { "Atari ST 8x16 System Font:pixelsize=30" };
 
