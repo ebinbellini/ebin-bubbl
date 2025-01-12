@@ -443,6 +443,14 @@ void loop() {
             if (event.type == KeyPress) {
                 XLookupString(&event.xkey, text, 255, &key, 0);
             }
+            // Exit program on mouse button press
+            else if (event.type == ButtonPress) {
+                // Do not react to mouse scrolling
+                if (event.xbutton.button != Button4 && event.xbutton.button != Button5) {
+                    cleanup();
+                    exit(0);
+                }
+            }
         }
 
         draw();
