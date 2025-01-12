@@ -363,9 +363,10 @@ void draw() {
 }
 
 void xinit() {
-    Display *dpy = XOpenDisplay(NULL);
-    if (dpy == NULL) {
-        puts("display är NULL nu");
+    Display *dpy;
+    if (!(dpy = XOpenDisplay(NULL))) {
+        remove(fifo_path);
+        die("unable to open display");
     }
 
     int screen = DefaultScreen(dpy);
