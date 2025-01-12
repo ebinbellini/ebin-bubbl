@@ -34,7 +34,7 @@ static void* icon = NULL;
 static int res_value;
 unsigned frame_number = 0;
 
-void close_x() {
+void close_x(void) {
     if (icon != NULL)
         imlib_free_image();
 
@@ -46,7 +46,7 @@ void close_x() {
     XCloseDisplay(dpy);
 }
 
-void cleanup() {
+void cleanup(void) {
     close_x();
     remove(fifo_path);
 }
@@ -70,7 +70,7 @@ int resource_load(XrmDatabase db, char *name, void **dst) {
 	return 0;
 }
 
-void load_xresources() {
+void load_xresources(void) {
 	XrmInitialize();
     char *resource_manager = XResourceManagerString(drw->dpy);
 	if (!resource_manager)
@@ -266,7 +266,7 @@ void draw_hexagon_shape(Drawable *dwb, GC *gc, unsigned x, unsigned y, unsigned 
     }
 }
 
-void check_new_command() {
+void check_new_command(void) {
     int n;
     int fd;
     char buf[256];
@@ -317,7 +317,7 @@ void check_new_command() {
     close(fd);
 }
 
-void draw() {
+void draw(void) {
     // Count how many frames have been drawn
     frame_number++;
 
@@ -362,7 +362,7 @@ void draw() {
     }
 }
 
-void xinit() {
+void xinit(void) {
     Display *dpy;
     if (!(dpy = XOpenDisplay(NULL))) {
         remove(fifo_path);
@@ -432,7 +432,7 @@ void xinit() {
     XFreeGC(drw->dpy, shape_gc);
 }
 
-void loop() {
+void loop(void) {
     XEvent event;
     KeySym key;
     char text[255];
