@@ -41,11 +41,11 @@ Show 64% brightness:
 
 Show mic muted:
 
-    ebin-bubbl --mic 1
+    ebin-bubbl --mic 0
 
 Show sound not muted:
 
-    ebin-bubbl --sound 0
+    ebin-bubbl --sound 1
 
 Show power saving mode on
 

@@ -1,11 +1,13 @@
 SRC = bubbl.c config.h drw/drw.c drw/util.c
+CC = tcc
+PREFIX = /usr/local
 
 ebin-bubbl: ${SRC}
 	sh ./generate_icon_data.sh
-	tcc -o ebin-bubbl \
+	${CC} -o $@ \
 	*.c drw/*.c -O0 -lX11 -lXft -lXext \
 	-lfontconfig -lfreetype \
-	-lm -I/usr/include/freetype2 -lImlib2 \
+	-lm -I/usr/include/freetype2 -lImlib2
 
 
 all: ebin-bubbl
@@ -13,8 +15,16 @@ all: ebin-bubbl
 
 clean:
 	rm -f icon_data.h
+	rm ebin-bubbl
 
 
 install: all
-	cp -f ./ebin-bubbl /usr/bin/
-	chmod 755 /usr/bin/ebin-bubbl
+	mkdir -p ${DESTDIR}${PREFIX}/bin
+	cp -f ./ebin-bubbl ${DESTDIR}${PREFIX}/bin
+	chmod 755 ${DESTDIR}${PREFIX}/bin/ebin-bubbl
+
+
+uninstall:
+	rm -f ${DESTDIR}${PREFIX}/bin/ebin-bubbl
+
+.PHONY: all clean install uninstall ebin-bubbl

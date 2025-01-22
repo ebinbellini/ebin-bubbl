@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <string.h>
 #include <unistd.h>
 #include <math.h>
 #include <sys/wait.h>
@@ -33,7 +34,7 @@ static void* icon = NULL;
 static int res_value;
 unsigned frame_number = 0;
 
-void close_x() {
+void close_x(void) {
     if (icon != NULL)
         imlib_free_image();
 
@@ -45,7 +46,7 @@ void close_x() {
     XCloseDisplay(dpy);
 }
 
-void cleanup() {
+void cleanup(void) {
     close_x();
     remove(fifo_path);
 }
@@ -69,7 +70,7 @@ int resource_load(XrmDatabase db, char *name, void **dst) {
 	return 0;
 }
 
-void load_colors_from_xresources() {
+void load_xresources(void) {
 	XrmInitialize();
     char *resource_manager = XResourceManagerString(drw->dpy);
 	if (!resource_manager)
@@ -265,7 +266,7 @@ void draw_hexagon_shape(Drawable *dwb, GC *gc, unsigned x, unsigned y, unsigned 
     }
 }
 
-void check_new_command() {
+void check_new_command(void) {
     int n;
     int fd;
     char buf[256];
@@ -316,7 +317,7 @@ void check_new_command() {
     close(fd);
 }
 
-void draw() {
+void draw(void) {
     // Count how many frames have been drawn
     frame_number++;
 
@@ -361,10 +362,11 @@ void draw() {
     }
 }
 
-void xinit() {
-    Display *dpy = XOpenDisplay(NULL);
-    if (dpy == NULL) {
-        puts("display är NULL nu");
+void xinit(void) {
+    Display *dpy;
+    if (!(dpy = XOpenDisplay(NULL))) {
+        remove(fifo_path);
+        die("unable to open display");
     }
 
     int screen = DefaultScreen(dpy);
@@ -379,8 +381,15 @@ void xinit() {
     width = DisplayWidth(dpy, screen);
     height = DisplayHeight(dpy, screen);
 
-    const int x = width - BUBBL_SIZE - 12;
-    const int y = 116;
+    int x, y;
+    if (!strcmp(initial_x_direction, "left"))
+        x = x_offset;
+    else
+        x = width - BUBBL_SIZE - x_offset;
+    if (!strcmp(initial_y_direction, "bottom"))
+        y = height - BUBBL_SIZE - y_offset;
+    else
+        y = y_offset;
 
     XSetWindowAttributes swa;
     swa.override_redirect = True;
@@ -403,7 +412,8 @@ void xinit() {
 
     font = drw_fontset_create(drw, fontlist, LENGTH(fontlist));
 
-    load_colors_from_xresources();
+    if (use_xresources)
+        load_xresources();
     char * palette[] = { col_background, col_foreground };
     drw->scheme = drw_scm_create(drw, (const char **)palette, 2);
 
@@ -422,7 +432,7 @@ void xinit() {
     XFreeGC(drw->dpy, shape_gc);
 }
 
-void loop() {
+void loop(void) {
     XEvent event;
     KeySym key;
     char text[255];
@@ -434,10 +444,18 @@ void loop() {
             if (event.type == KeyPress) {
                 XLookupString(&event.xkey, text, 255, &key, 0);
             }
+            // Exit program on mouse button press
+            else if (event.type == ButtonPress) {
+                // Do not react to mouse scrolling
+                if (event.xbutton.button != Button4 && event.xbutton.button != Button5) {
+                    cleanup();
+                    exit(0);
+                }
+            }
         }
 
         draw();
-        usleep(10000);
+        usleep(timeout * 10000);
     }
 }
 
@@ -466,7 +484,7 @@ void usage(void) {
 	die("Wrong command format. Check out the README.md for usage examples.");
 }
 
-void main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
     if (argc > 2 && strncmp("--", argv[1], 2) == 0) {
         res_value = atoi(argv[2]);
     } else {
@@ -480,5 +498,6 @@ void main(int argc, char *argv[]) {
     signal(SIGINT, interrupt_handler);
     signal(SIGKILL, interrupt_handler);
     loop();
+    return 0;
 }
 
